@@ -23,7 +23,6 @@ while true; do
 		echo "Passwords don't match"
 		echo
 	fi
-
 done
 
 for hostname in "${hosts[@]}"; do 

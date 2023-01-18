@@ -22,7 +22,6 @@ while true; do
 	else
 		echo "Passwords don't match"
 		echo
-		#isconfirmed=false
 	fi
 
 done

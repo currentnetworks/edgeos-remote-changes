@@ -1,9 +1,6 @@
 #!/bin/bash
 dir=`dirname $0`
 
-#IFS=$'\n' read -d '' -r -a hosts < $dir/hosts
-#$IFS=$'\n' read  -d '' -r -a hosts < $dir/hosts.txt
-
 hosts=()
 while IFS= read -r line || [[ "$line" ]];  do 
 	hosts+=("$line")

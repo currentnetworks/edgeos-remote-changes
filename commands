@@ -1,0 +1,7 @@
+source /opt/vyatta/etc/functions/script-template
+configure
+set firewall group network-group Management network 172.30.0.0/24
+commit
+save
+exit
+

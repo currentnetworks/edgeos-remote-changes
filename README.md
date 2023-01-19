@@ -2,6 +2,7 @@ Steps To make it work
 
 1: from command line, in folder where you want to store the files, do:  
    - git clone https://github.com/currentnetworks/edgeos-remote-changes/  
+   
 2: Look through and follow commands in prereqs.txt  
 3: Fill routers.txt with list of router ip addresses that you want to change  
 4: run python3 changes_edgeos.py from the folder containing the files  

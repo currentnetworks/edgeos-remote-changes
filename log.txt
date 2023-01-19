@@ -1,0 +1,20 @@
+
+
+ -------Connecting to 192.168.1.254-------
+
+Error connecting to 192.168.1.254: Authentication failed. Try Again 
+
+
+ -------Connecting to 192.168.1.254-------
+
+Error connecting to 192.168.1.254: Authentication failed. Try Again 
+
+
+ -------Connecting to 192.168.1.254-------
+
+Error connecting to 192.168.1.254: Authentication failed.
+
+
+ -------Connecting to 192.168.1.1-------
+
+Error connecting to 192.168.1.1: timed out

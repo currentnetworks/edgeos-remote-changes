@@ -1,8 +1,8 @@
 source /opt/vyatta/etc/functions/script-template
 vbash
 configure
-set firewall group network-group Management network 172.30.0.0/24
-set firewall group network-group Management network 192.168.1.0/24
+set system login user script2 level admin
+set system login user script2 authentication plaintext-password "testscript"
 commit
 save
 exit

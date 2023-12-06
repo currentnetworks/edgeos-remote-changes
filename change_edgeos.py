@@ -1,87 +1,113 @@
 import paramiko
-import getpass
 import time
+import logging
+import os
+import getpass
+ 
+# Set up logging to file and console
+logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='w')
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+console.setFormatter(formatter)
+logging.getLogger('paramiko.transport').setLevel(logging.ERROR)  # Only log errors and above for paramiko.transport
+logging.getLogger('').addHandler(console)
 
-#Get Router List
-with open("routers.txt", "r") as f:
-    routers = list(line for line in (l.strip() for l in f) if line)
+def file_exists(filename):
+    return os.path.isfile(filename)
 
-#Get Command List
-with open("command-list.txt", "r") as f:
-    commands = list(line for line in (l.strip() for l in f) if line)
+def load_file_contents(filename):
+    with open(filename, "r") as file:
+        return [line.strip() for line in file if line.strip()]
 
-#Send Command Function
 def send_command(channel, command):
-    channel.send(command+"\n")
+    channel.send(command + "\n")
     time.sleep(1)
     while not channel.recv_ready():
-        pass
-    stdout = channel.recv(2048).decode()
+        time.sleep(1)
+    output = channel.recv(2048).decode()
+    logging.info(f"Command: {command}\nOutput: {output}")
+    return output
 
-    print("Command: " + command)
-    print("Output: " + stdout)
-    with open("log.txt", "a") as f:
-        f.write("Command: " + command + "\n")
-        f.write("Output: " + stdout + "\n")
+def execute_commands(client, commands, router):
+    with client.invoke_shell() as channel:
+        for command in commands:
+            send_command(channel, command)
 
-#Do Connection Work Funciton
-def do_connection_commands(username, password, router, commands, f):
-    # Log the router we are trying to connect to
-    f.write(f"\n\n -------Connecting to {router}-------\n\n")
-    print("\n\n -------Connecting to "+router+"-------\n\n")
-  
-    client.connect(router, username=username, password=password, look_for_keys=False, allow_agent=False, timeout=5)
+def create_ssh_client(hostname, username, password, timeout=10):
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(hostname, username=username, password=password, look_for_keys=False, allow_agent=False, timeout=timeout, banner_timeout=30)
+        return client
+    except paramiko.SSHException as e:
+        logging.error(f"Connection to {hostname} failed: {e}")
+        return None
 
-    time.sleep(1)
-    channel = client.invoke_shell()
-    stdout = channel.recv(2048).decode()
-    f.write("Command: Connect" + "\n")
-    f.write("Output: " + stdout + "\n")
+def do_connection_commands(username, password, router, commands):
+    logging.info(f"\n\n -------Connecting to {router}-------\n\n")
+    client = create_ssh_client(router, username, password)
+    if client:
+        execute_commands(client, commands, router)
+        client.close()
+    return client
 
-    print(stdout + "-\n-----Running Commands------\n")
-    f.write("------Running Commands------\n")
-    for command in commands:
-        send_command(channel, command)
+def main():
+    if not file_exists("routers.txt") or not file_exists("command-list.txt"):
+        logging.error("Necessary files (routers.txt or command-list.txt) are missing.")
+        return
 
+    routers = load_file_contents("routers.txt")
+    commands = load_file_contents("command-list.txt")
 
-#Define Error Conditions and Attempts to Trye
-auth_error = "Authentication"
-max_attempts = 3
+    auth_error = "Authentication"
+    max_attempts = 3
 
+    username = input("Initial Username: ")
+    password = getpass.getpass("Initial Password: ")
 
-# Get SSH credentials
-username = input("Username: ")
-password = getpass.getpass()
-TempUser = username
-TempPass = password
+    TempUser = username
+    TempPass = password
 
-# Create an SSH client
-client = paramiko.SSHClient()
-client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    additional_commands_exist = file_exists("additional-commands.txt")
+    additional_commands = load_file_contents("additional-commands.txt") if additional_commands_exist else []
 
-with open("log.txt", "w") as f:
+    use_new_credentials = False
+    new_username = ""
+    new_password = ""
+
+    if additional_commands_exist:
+        print("File additional-commands.txt exists.")
+        use_new_credentials = input("Do you need to use different credentials for these additional commands? (yes/no): ").lower() == 'yes'
+        if use_new_credentials:
+            new_username = input("New Username for additional commands: ")
+            new_password = getpass.getpass("New Password for additional commands: ")
+
     for router in routers:
         for attempt in range(max_attempts):
             try:
-                do_connection_commands(username, password, router, commands, f)
+                client = do_connection_commands(username, password, router, commands)
+                if client and additional_commands_exist:
+                    if use_new_credentials:
+                        # Use new credentials for additional commands
+                        do_connection_commands(new_username, new_password, router, additional_commands)
+                    else:
+                        # Use the same credentials for additional commands
+                        do_connection_commands(username, password, router, additional_commands)
+                break
+            except Exception as e:
+                logging.error(f"Error connecting to {router}: {e}")
+                if attempt < max_attempts - 1 and auth_error in str(e):
+                    logging.error(f"Error connecting to {router}: {e}. Trying again.")
+                    username = input(f"Username For {router}: ")
+                    password = getpass.getpass(f"Password For {router}: ")
+                else:
+                    break
+            finally:
+                # Reset the credentials for the next router
                 username = TempUser
                 password = TempPass
 
-            except Exception as e:
-                if attempt < max_attempts - 1 and auth_error in str(e):
-                    f.write(f"Error connecting to {router}: {e} Try Again \n")
-                    print(f"Error connecting to {router}: {e} \n Try Again")  
 
-                    #try credentials again
-                    username = input("Username For "+router+": ")
-                    password = getpass.getpass()
-                    continue
-                else:
-                    f.write(f"Error connecting to {router}: {e}\n")
-                    print(f"Error connecting to {router}: {e}")
-                    pass
-            break
-
-
-
-
+if __name__ == "__main__":
+    main()

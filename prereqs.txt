@@ -12,4 +12,3 @@ eval "$(/opt/homebrew/bin/brew shellenv)"
 brew install python
 pip3 install --upgrade pip
 pip3 install paramiko
-pip3 install getpass

@@ -1,0 +1,7 @@
+source /opt/vyatta/etc/functions/script-template
+vbash
+configure
+delete system login user script
+commit
+save
+exit
